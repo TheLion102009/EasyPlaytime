@@ -1,0 +1,33 @@
+name: EasyPlaytime
+version: '${version}'
+main: de.thelion.easyPlaytime.EasyPlaytime
+api-version: '1.20'
+folia-supported: true
+authors: [ thelion ]
+description: Ein einfaches Spielzeit-Plugin für Minecraft mit konfigurierbaren Zeitformaten und PlaceholderAPI Integration
+website: https://github.com/thelion/EasyPlaytime
+
+commands:
+  easyplaytime:
+    description: Hauptbefehl für EasyPlaytime
+    usage: /<command> <playtime|reload> [Spieler]
+    aliases: [eplaytime]
+    permission: easyplaytime.use
+  eplaytime:
+    description: Alias für easyplaytime
+    usage: /<command> <playtime|reload> [Spieler]
+    permission: easyplaytime.use
+
+permissions:
+  easyplaytime.use:
+    description: Erlaubt die Verwendung der EasyPlaytime Befehle
+    default: true
+  easyplaytime.reload:
+    description: Erlaubt das Neuladen der Konfiguration
+    default: op
+  easyplaytime.others:
+    description: Erlaubt das Anzeigen der Spielzeit anderer Spieler
+    default: true
+
+depend: []
+softdepend: [PlaceholderAPI]
