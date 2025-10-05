@@ -26,6 +26,13 @@ Perfect for servers running **Paper** or **Folia** on Minecraft 1.21.x and newer
 5. Open `plugins/EasyPlaytime/config.yml` and adjust the settings as desired.  
 6. Restart your server or use `/eplaytime reload` to apply changes.
 
+
+---
+
+## ✨ Features
+
+- Show player playtime in the **tab list** with a placeholder  
+- Display playtime in chat with easy-to-use commands 
 ---
 
 ## 🗄️ Database Setup (Optional)
