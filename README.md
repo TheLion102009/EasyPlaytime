@@ -25,14 +25,45 @@ Perfect for servers running **Paper** or **Folia** on Minecraft 1.21.x and newer
 4. (Optional) Set up a MariaDB/MySQL database for cross-server synchronization (see Database Setup section).  
 5. Open `plugins/EasyPlaytime/config.yml` and adjust the settings as desired.  
 6. Restart your server or use `/eplaytime reload` to apply changes.
+{{ ... }}
 
+## 🎭 Placeholders
 
----
+EasyPlaytime provides placeholders for use with **PlaceholderAPI**. These can be used in chat formats, signs, or any other plugin that supports PlaceholderAPI.
 
-## ✨ Features
+### Available Placeholders
 
-- Show player playtime in the **tab list** with a placeholder  
-- Display playtime in chat with easy-to-use commands 
+|
+ Placeholder 
+|
+ Description 
+|
+ Example Output 
+|
+|
+-------------
+|
+-------------
+|
+----------------
+|
+|
+`%easyplaytime_playtime%`
+|
+ Shows the player's formatted playtime 
+|
+`1d 2h 30m 45s`
+|
+
+### Usage Examples
+
+- **Tab List:** `%easyplaytime_playtime%`
+- **Chat Format:** `Playtime: %easyplaytime_playtime%`
+- **Scoreboard:** `Time Played: %easyplaytime_playtime%`
+
+**Note:** PlaceholderAPI must be installed on your server for placeholders to work.
+
+{{ ... }}
 ---
 
 ## 🗄️ Database Setup (Optional)
