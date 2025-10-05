@@ -15,6 +15,32 @@ format:
   # Zeige Sekunden (s) - z.B. "42s"
   show-seconds: true
 
+# Datenbank-Konfiguration für serverübergreifende Spielzeit-Synchronisation
+database:
+  # Aktiviere die Datenbank (true für Datenbank, false für lokale YAML-Datei)
+  enabled: false
+  
+  # Datenbank-Host (z.B. localhost oder deine Datenbank-IP)
+  host: "localhost"
+
+  # Datenbank-Port (Standard: 3306 für MySQL/MariaDB)
+  port: 3306
+  
+  # Datenbank-Name
+  database: "easyplaytime"
+  
+  # Benutzername für die Datenbankverbindung
+  username: "minecraft"
+  
+  # Passwort für die Datenbankverbindung (WICHTIG: Verwende sichere Passwörter und speichere sie nicht in der config.yml!)
+  password: "password"
+  
+  # Tabelle für Spielzeit-Daten (wird automatisch erstellt)
+  table: "player_playtime"
+  
+  # Maximale Verbindungszeit (in Sekunden) - Optional
+  connection-timeout: 30
+
 # Beispiele für verschiedene Formate:
 # Alle aktiviert: "1d 2h 5m 4s"
 # Ohne Sekunden: "1d 2h 5m" (show-seconds: false)

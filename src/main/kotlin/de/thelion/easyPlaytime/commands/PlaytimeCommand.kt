@@ -70,6 +70,18 @@ class PlaytimeCommand(private val plugin: EasyPlaytime) : CommandExecutor, TabCo
         }
         
         plugin.configManager.reloadConfig()
+        
+        // Check if database is enabled and migrate if necessary
+        if (plugin.configManager.getConfig().getBoolean("database.enabled", false)) {
+            sender.sendMessage("${ChatColor.YELLOW}Datenbank ist aktiviert. Migriere Daten...")
+            val migrationSuccess = plugin.playtimeManager.migrateToDatabase()
+            if (migrationSuccess) {
+                sender.sendMessage("${ChatColor.GREEN}Daten erfolgreich in die Datenbank migriert!")
+            } else {
+                sender.sendMessage("${ChatColor.RED}Fehler bei der Datenmigration. Überprüfe die Logs.")
+            }
+        }
+        
         sender.sendMessage("${ChatColor.GREEN}EasyPlaytime Konfiguration wurde neu geladen!")
     }
     

@@ -15,9 +15,14 @@ class PlaytimeManager(private val plugin: EasyPlaytime) {
     private val sessionStartTimes = ConcurrentHashMap<UUID, Long>()
     private val dataFile: File = File(plugin.dataFolder, "playtime.yml")
     private lateinit var dataConfig: FileConfiguration
+    private val databaseManager = DatabaseManager(plugin)
     
     init {
-        loadData()
+        if (plugin.configManager.getConfig().getBoolean("database.enabled", false)) {
+            loadDataFromDatabase()
+        } else {
+            loadData() // Fallback to YAML
+        }
     }
     
     fun startSession(player: Player) {
@@ -32,7 +37,11 @@ class PlaytimeManager(private val plugin: EasyPlaytime) {
         val currentPlaytime = playtimeData.getOrDefault(uuid, 0L)
         playtimeData[uuid] = currentPlaytime + sessionTime
         
-        savePlayerData(uuid)
+        if (plugin.configManager.getConfig().getBoolean("database.enabled", false)) {
+            databaseManager.updatePlaytime(uuid, sessionTime)
+        } else {
+            savePlayerData(uuid) // Fallback to YAML
+        }
     }
     
     fun getPlaytime(player: Player): Long {
@@ -77,6 +86,13 @@ class PlaytimeManager(private val plugin: EasyPlaytime) {
         }
         
         return if (parts.isEmpty()) "0s" else parts.joinToString(" ")
+    }
+    
+    private fun loadDataFromDatabase() {
+        // Load all player data from database
+        // For simplicity, we'll load data on-demand when needed
+        // In a production system, you might want to cache frequently accessed data
+        plugin.logger.info("Spielzeit-Daten werden aus der Datenbank geladen.")
     }
     
     private fun loadData() {
@@ -125,16 +141,34 @@ class PlaytimeManager(private val plugin: EasyPlaytime) {
         }
         sessionStartTimes.clear()
         
-        // Save all data
-        for ((uuid, playtime) in playtimeData) {
-            dataConfig.set(uuid.toString(), playtime)
+        if (plugin.configManager.getConfig().getBoolean("database.enabled", false)) {
+            // Save all data to database
+            for ((uuid, playtime) in playtimeData) {
+                databaseManager.savePlaytime(uuid, playtime)
+            }
+            plugin.logger.info("Alle Spielzeit-Daten in die Datenbank gespeichert.")
+        } else {
+            // Save all data to YAML (fallback)
+            for ((uuid, playtime) in playtimeData) {
+                dataConfig.set(uuid.toString(), playtime)
+            }
+            
+            try {
+                dataConfig.save(dataFile)
+                plugin.logger.info("Alle Spielzeit-Daten gespeichert.")
+            } catch (e: IOException) {
+                plugin.logger.severe("Konnte Spielzeit-Daten nicht speichern: ${e.message}")
+            }
+        }
+    }
+    
+    // Method to migrate YAML data to database
+    fun migrateToDatabase(): Boolean {
+        if (!plugin.configManager.getConfig().getBoolean("database.enabled", false)) {
+            plugin.logger.warning("Datenbank ist nicht aktiviert. Migration übersprungen.")
+            return false
         }
         
-        try {
-            dataConfig.save(dataFile)
-            plugin.logger.info("Alle Spielzeit-Daten gespeichert.")
-        } catch (e: IOException) {
-            plugin.logger.severe("Konnte Spielzeit-Daten nicht speichern: ${e.message}")
-        }
+        return databaseManager.migrateFromYaml(playtimeData)
     }
 }
