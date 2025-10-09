@@ -22,6 +22,10 @@ dependencies {
     compileOnly("me.clip:placeholderapi:2.11.6")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("org.mariadb.jdbc:mariadb-java-client:3.4.1")
+    // Zusätzliche MySQL-Unterstützung falls nötig
+    implementation("mysql:mysql-connector-java:8.0.33")
+    // Redis Unterstützung für schnellere Performance (optional)
+    implementation("redis.clients:jedis:5.1.0")
 }
 
 tasks {

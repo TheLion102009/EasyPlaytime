@@ -7,6 +7,7 @@ import de.thelion.easyPlaytime.listeners.PlayerListener
 import de.thelion.easyPlaytime.managers.PlaytimeManager
 import de.thelion.easyPlaytime.managers.ConfigManager
 import de.thelion.easyPlaytime.placeholders.PlaytimePlaceholder
+import org.bukkit.scheduler.BukkitRunnable
 
 class EasyPlaytime : JavaPlugin() {
     
@@ -41,6 +42,11 @@ class EasyPlaytime : JavaPlugin() {
         } else {
             logger.warning("PlaceholderAPI not found! Placeholder integration disabled.")
         }
+
+        // Start periodic sync if database is enabled
+        if (configManager.getConfig().getBoolean("database.enabled", false)) {
+            startPeriodicSync()
+        }
         
         logger.info("EasyPlaytime Plugin wurde erfolgreich aktiviert!")
     }
@@ -49,5 +55,20 @@ class EasyPlaytime : JavaPlugin() {
         // Save all playtime data
         playtimeManager.saveAllData()
         logger.info("EasyPlaytime Plugin wurde deaktiviert!")
+    }
+
+    private fun startPeriodicSync() {
+        object : BukkitRunnable() {
+            override fun run() {
+                if (configManager.getConfig().getBoolean("database.enabled", false)) {
+                    try {
+                        // Sync data from database to ensure consistency across servers
+                        playtimeManager.syncFromDatabase()
+                    } catch (e: Exception) {
+                        logger.warning("Fehler bei der periodischen Synchronisation: ${e.message}")
+                    }
+                }
+            }
+        }.runTaskTimer(this, 20 * 60 * 5, 20 * 60 * 5) // Every 5 minutes
     }
 }

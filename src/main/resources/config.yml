@@ -1,53 +1,59 @@
 # EasyPlaytime Konfiguration
-# Hier kannst du einstellen, welche Zeiteinheiten angezeigt werden sollen
 
 # Zeitformat Einstellungen
 format:
   # Zeige Tage (d) - z.B. "5d"
   show-days: true
-  
+
   # Zeige Stunden (h) - z.B. "3h"
   show-hours: true
-  
+
   # Zeige Minuten (m) - z.B. "25m"
   show-minutes: true
-  
-  # Zeige Sekunden (s) - z.B. "42s"
-  show-seconds: true
 
 # Datenbank-Konfiguration für serverübergreifende Spielzeit-Synchronisation
 database:
   # Aktiviere die Datenbank (true für Datenbank, false für lokale YAML-Datei)
-  enabled: false
-  
+  enabled: true
+
   # Datenbank-Host (z.B. localhost oder deine Datenbank-IP)
-  host: "localhost"
+  host: "192.168.178.172"
 
   # Datenbank-Port (Standard: 3306 für MySQL/MariaDB)
   port: 3306
-  
+
   # Datenbank-Name
-  database: "easyplaytime"
-  
+  database: "Playtime"
+
   # Benutzername für die Datenbankverbindung
-  username: "minecraft"
-  
+  username: "thelion"
+
   # Passwort für die Datenbankverbindung (WICHTIG: Verwende sichere Passwörter und speichere sie nicht in der config.yml!)
-  password: "password"
-  
+  password: "Bunker-2009"
+
   # Tabelle für Spielzeit-Daten (wird automatisch erstellt)
   table: "player_playtime"
-  
+
   # Maximale Verbindungszeit (in Sekunden) - Optional
   connection-timeout: 30
 
-# Beispiele für verschiedene Formate:
-# Alle aktiviert: "1d 2h 5m 4s"
-# Ohne Sekunden: "1d 2h 5m" (show-seconds: false)
-# Nur Stunden und Minuten: "2h 5m" (show-days: false, show-seconds: false)
-# Nur Tage und Stunden: "1d 2h" (show-minutes: false, show-seconds: false)
+# Redis-Konfiguration für schnellere Performance (alternativ zur SQL-Datenbank)
+redis:
+  # Aktiviere Redis (true für Redis, false für SQL-Datenbank)
+  # Hinweis: Redis ist schneller, aber Daten können verloren gehen bei Server-Neustart
+  enabled: false
 
-# Nachrichten (optional für zukünftige Erweiterungen)
+  # Redis-Host (z.B. localhost oder deine Redis-IP)
+  host: "localhost"
+
+  # Redis-Port (Standard: 6379)
+  port: 6379
+
+  # Redis-Passwort (leer lassen, wenn keins gesetzt)
+  password: ""
+
+  # Redis-Datenbank (Standard: 0)
+  database: 0
 messages:
   no-permission: "&cDu hast keine Berechtigung für diesen Befehl."
   player-not-found: "&cSpieler '{player}' wurde nicht gefunden."

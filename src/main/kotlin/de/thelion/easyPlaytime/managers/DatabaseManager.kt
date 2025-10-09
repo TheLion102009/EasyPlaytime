@@ -1,6 +1,7 @@
 package de.thelion.easyPlaytime.managers
 
 import de.thelion.easyPlaytime.EasyPlaytime
+import org.mariadb.jdbc.Driver
 import java.sql.*
 import java.util.*
 
@@ -10,6 +11,13 @@ class DatabaseManager(private val plugin: EasyPlaytime) {
     private val config = plugin.configManager.getConfig()
 
     init {
+        // Statisch den Treiber laden
+        try {
+            DriverManager.registerDriver(Driver())
+        } catch (e: SQLException) {
+            plugin.logger.severe("Fehler beim Laden des MariaDB-Treibers: ${e.message}")
+        }
+
         if (config.getBoolean("database.enabled", false)) {
             initializeDatabase()
         }
@@ -24,9 +32,27 @@ class DatabaseManager(private val plugin: EasyPlaytime) {
             val password = config.getString("database.password", "password")
             val table = config.getString("database.table") ?: "player_playtime"
 
-            // Verbindung aufbauen
-            val url = "jdbc:mariadb://$host:$port/$database"
-            connection = DriverManager.getConnection(url, username, password)
+            // Verbindung aufbauen - versuche sowohl MariaDB als auch MySQL URL
+            val urls = listOf(
+                "jdbc:mariadb://$host:$port/$database",
+                "jdbc:mysql://$host:$port/$database"
+            )
+
+            var connected = false
+            for (url in urls) {
+                try {
+                    connection = DriverManager.getConnection(url, username, password)
+                    connected = true
+                    break
+                } catch (e: SQLException) {
+                    // Try next URL
+                }
+            }
+
+            if (!connected) {
+                plugin.logger.severe("Konnte keine Verbindung zur Datenbank herstellen!")
+                return
+            }
 
             // Tabelle erstellen, falls sie nicht existiert
             createTableIfNotExists(table)
@@ -38,7 +64,24 @@ class DatabaseManager(private val plugin: EasyPlaytime) {
         }
     }
 
+    private fun ensureConnection(): Boolean {
+        if (connection == null || connection!!.isClosed || !connection!!.isValid(2)) {
+            try {
+                connection?.close()
+                initializeDatabase()
+                return connection != null && connection!!.isValid(2)
+            } catch (e: SQLException) {
+                plugin.logger.severe("Fehler beim Neuverbinden zur Datenbank: ${e.message}")
+                connection = null
+                return false
+            }
+        }
+        return true
+    }
+
     private fun createTableIfNotExists(tableName: String) {
+        if (!ensureConnection()) return
+
         val createTableSQL = """
             CREATE TABLE IF NOT EXISTS `$tableName` (
                 `uuid` VARCHAR(36) NOT NULL PRIMARY KEY,
@@ -47,11 +90,15 @@ class DatabaseManager(private val plugin: EasyPlaytime) {
             )
         """.trimIndent()
 
-        connection?.prepareStatement(createTableSQL)?.use { it.execute() }
+        try {
+            connection?.prepareStatement(createTableSQL)?.use { it.execute() }
+        } catch (e: SQLException) {
+            plugin.logger.severe("Fehler beim Erstellen der Tabelle: ${e.message}")
+        }
     }
 
     fun getPlaytime(uuid: UUID): Long {
-        if (connection == null) return 0L
+        if (!ensureConnection()) return 0L
 
         val table = config.getString("database.table") ?: "player_playtime"
         val query = "SELECT playtime_ms FROM `$table` WHERE uuid = ?"
@@ -74,7 +121,7 @@ class DatabaseManager(private val plugin: EasyPlaytime) {
     }
 
     fun savePlaytime(uuid: UUID, playtimeMs: Long) {
-        if (connection == null) return
+        if (!ensureConnection()) return
 
         val table = config.getString("database.table") ?: "player_playtime"
         val query = """
@@ -93,19 +140,19 @@ class DatabaseManager(private val plugin: EasyPlaytime) {
         }
     }
 
-    fun updatePlaytime(uuid: UUID, additionalTimeMs: Long) {
-        if (connection == null) return
+    fun updatePlaytime(uuid: UUID, totalPlaytimeMs: Long) {
+        if (!ensureConnection()) return
 
         val table = config.getString("database.table") ?: "player_playtime"
         val query = """
             INSERT INTO `$table` (uuid, playtime_ms) VALUES (?, ?)
-            ON DUPLICATE KEY UPDATE playtime_ms = playtime_ms + VALUES(playtime_ms), last_updated = CURRENT_TIMESTAMP
+            ON DUPLICATE KEY UPDATE playtime_ms = GREATEST(playtime_ms, VALUES(playtime_ms)), last_updated = CURRENT_TIMESTAMP
         """.trimIndent()
 
         try {
             connection?.prepareStatement(query)?.use { stmt ->
                 stmt.setString(1, uuid.toString())
-                stmt.setLong(2, additionalTimeMs)
+                stmt.setLong(2, totalPlaytimeMs)
                 stmt.executeUpdate()
             }
         } catch (e: SQLException) {
@@ -122,12 +169,21 @@ class DatabaseManager(private val plugin: EasyPlaytime) {
     }
 
     fun isConnected(): Boolean {
-        return connection != null && !connection!!.isClosed
+        return try {
+            connection != null && !connection!!.isClosed && connection!!.isValid(5)
+        } catch (e: SQLException) {
+            plugin.logger.warning("Fehler beim Überprüfen der Datenbankverbindung: ${e.message}")
+            false
+        }
+    }
+
+    fun isDatabaseEnabled(): Boolean {
+        return config.getBoolean("database.enabled", false)
     }
 
     // Migration von YAML zu Datenbank
     fun migrateFromYaml(yamlPlaytimeData: Map<UUID, Long>): Boolean {
-        if (connection == null) return false
+        if (!ensureConnection()) return false
 
         var success = true
         for ((uuid, playtime) in yamlPlaytimeData) {
@@ -139,5 +195,33 @@ class DatabaseManager(private val plugin: EasyPlaytime) {
             }
         }
         return success
+    }
+
+    fun getAllPlaytimes(): Map<UUID, Long> {
+        if (!ensureConnection()) return emptyMap()
+
+        val table = config.getString("database.table") ?: "player_playtime"
+        val query = "SELECT uuid, playtime_ms FROM `$table`"
+
+        return try {
+            connection?.prepareStatement(query)?.use { stmt ->
+                stmt.executeQuery().use { rs ->
+                    val playtimes = mutableMapOf<UUID, Long>()
+                    while (rs.next()) {
+                        try {
+                            val uuid = UUID.fromString(rs.getString("uuid"))
+                            val playtime = rs.getLong("playtime_ms")
+                            playtimes[uuid] = playtime
+                        } catch (e: IllegalArgumentException) {
+                            plugin.logger.warning("Ungültige UUID in Datenbank: ${rs.getString("uuid")}")
+                        }
+                    }
+                    playtimes
+                }
+            } ?: emptyMap()
+        } catch (e: SQLException) {
+            plugin.logger.severe("Fehler beim Laden aller Spielzeiten: ${e.message}")
+            emptyMap()
+        }
     }
 }
