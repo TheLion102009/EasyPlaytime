@@ -24,6 +24,8 @@ dependencies {
     implementation("org.mariadb.jdbc:mariadb-java-client:3.4.1")
     // Zusätzliche MySQL-Unterstützung falls nötig
     implementation("mysql:mysql-connector-java:8.0.33")
+    // HikariCP für Connection Pooling (Performance-Optimierung)
+    implementation("com.zaxxer:HikariCP:6.2.1")
     // Redis Unterstützung für schnellere Performance (optional)
     implementation("redis.clients:jedis:5.1.0")
 }

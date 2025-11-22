@@ -5,7 +5,7 @@ api-version: '1.20'
 folia-supported: true
 authors: [ thelion ]
 description: Ein einfaches Spielzeit-Plugin für Minecraft mit konfigurierbaren Zeitformaten und PlaceholderAPI Integration
-website: https://github.com/thelion/EasyPlaytime
+website: https://github.com/TheLion102009/EasyPlaytime
 
 commands:
   easyplaytime:

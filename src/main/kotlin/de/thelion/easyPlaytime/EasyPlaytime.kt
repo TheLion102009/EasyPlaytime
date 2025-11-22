@@ -7,7 +7,7 @@ import de.thelion.easyPlaytime.listeners.PlayerListener
 import de.thelion.easyPlaytime.managers.PlaytimeManager
 import de.thelion.easyPlaytime.managers.ConfigManager
 import de.thelion.easyPlaytime.placeholders.PlaytimePlaceholder
-import org.bukkit.scheduler.BukkitRunnable
+import java.util.concurrent.TimeUnit
 
 class EasyPlaytime : JavaPlugin() {
     
@@ -44,7 +44,8 @@ class EasyPlaytime : JavaPlugin() {
         }
 
         // Start periodic sync if database is enabled
-        if (configManager.getConfig().getBoolean("database.enabled", false)) {
+        if (configManager.getConfig().getBoolean("database.enabled", false) || 
+            configManager.getConfig().getBoolean("redis.enabled", false)) {
             startPeriodicSync()
         }
         
@@ -58,17 +59,22 @@ class EasyPlaytime : JavaPlugin() {
     }
 
     private fun startPeriodicSync() {
-        object : BukkitRunnable() {
-            override fun run() {
-                if (configManager.getConfig().getBoolean("database.enabled", false)) {
-                    try {
-                        // Sync data from database to ensure consistency across servers
+        // Use Folia-compatible async scheduler
+        try {
+            server.asyncScheduler.runAtFixedRate(this, { _ ->
+                try {
+                    if (configManager.getConfig().getBoolean("database.enabled", false) ||
+                        configManager.getConfig().getBoolean("redis.enabled", false)) {
                         playtimeManager.syncFromDatabase()
-                    } catch (e: Exception) {
-                        logger.warning("Fehler bei der periodischen Synchronisation: ${e.message}")
                     }
+                } catch (e: Exception) {
+                    logger.warning("Fehler bei der periodischen Synchronisation: ${e.message}")
                 }
-            }
-        }.runTaskTimer(this, 20 * 60 * 5, 20 * 60 * 5) // Every 5 minutes
+            }, 5, 5, TimeUnit.MINUTES)
+            logger.info("Periodische Synchronisation gestartet (alle 5 Minuten)")
+        } catch (e: Exception) {
+            logger.warning("Konnte periodische Synchronisation nicht starten: ${e.message}")
+            logger.warning("Synchronisation wird nur bei Spieler-Events durchgeführt")
+        }
     }
 }

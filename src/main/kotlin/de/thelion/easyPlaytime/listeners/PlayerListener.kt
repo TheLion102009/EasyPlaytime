@@ -15,12 +15,16 @@ class PlayerListener(private val plugin: EasyPlaytime) : Listener {
         // Start tracking playtime for this player
         plugin.playtimeManager.startSession(player)
 
-        // Sync data from database when player joins to ensure consistency
-        if (plugin.configManager.getConfig().getBoolean("database.enabled", false)) {
-            try {
-                plugin.playtimeManager.syncPlayerFromDatabase(player.uniqueId)
-            } catch (e: Exception) {
-                plugin.logger.warning("Fehler beim Synchronisieren der Daten für ${player.name}: ${e.message}")
+        // Sync data from database when player joins to ensure consistency (async)
+        if (plugin.configManager.getConfig().getBoolean("database.enabled", false) ||
+            plugin.configManager.getConfig().getBoolean("redis.enabled", false)) {
+            // Async ausführen um den Main-Thread nicht zu blockieren
+            plugin.server.asyncScheduler.runNow(plugin) { _ ->
+                try {
+                    plugin.playtimeManager.syncPlayerFromDatabase(player.uniqueId)
+                } catch (e: Exception) {
+                    plugin.logger.warning("Fehler beim Synchronisieren der Daten für ${player.name}: ${e.message}")
+                }
             }
         }
     }
@@ -29,7 +33,7 @@ class PlayerListener(private val plugin: EasyPlaytime) : Listener {
     fun onPlayerQuit(event: PlayerQuitEvent) {
         val player = event.player
 
-        // End tracking playtime for this player
+        // End tracking playtime for this player (async DB-Update)
         plugin.playtimeManager.endSession(player)
     }
 }

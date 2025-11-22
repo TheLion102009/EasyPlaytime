@@ -1,4 +1,13 @@
 # EasyPlaytime Konfiguration
+# ============================================
+# PERFORMANCE-OPTIMIERUNGEN:
+# - HikariCP Connection Pooling für Datenbank (bis zu 10 Verbindungen)
+# - Batch-Updates für mehrere Spieler gleichzeitig
+# - Redis Pipeline für schnellere Operationen
+# - Config-Value-Caching
+# - Async DB-Operationen
+# - Nur Online-Spieler werden synchronisiert
+# ============================================
 
 # Zeitformat Einstellungen
 format:
@@ -16,8 +25,11 @@ database:
   # Aktiviere die Datenbank (true für Datenbank, false für lokale YAML-Datei)
   enabled: true
 
+  # Zeige Synchronisations-Debug-Nachrichten in der Console (true = anzeigen, false = ausblenden)
+  sync-debug: false
+
   # Datenbank-Host (z.B. localhost oder deine Datenbank-IP)
-  host: "192.168.178.172"
+  host: "localhost"
 
   # Datenbank-Port (Standard: 3306 für MySQL/MariaDB)
   port: 3306
@@ -26,10 +38,10 @@ database:
   database: "Playtime"
 
   # Benutzername für die Datenbankverbindung
-  username: "thelion"
+  username: "user"
 
   # Passwort für die Datenbankverbindung (WICHTIG: Verwende sichere Passwörter und speichere sie nicht in der config.yml!)
-  password: "Bunker-2009"
+  password: "password"
 
   # Tabelle für Spielzeit-Daten (wird automatisch erstellt)
   table: "player_playtime"

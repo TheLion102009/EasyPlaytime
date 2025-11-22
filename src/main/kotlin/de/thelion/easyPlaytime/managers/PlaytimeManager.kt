@@ -49,9 +49,18 @@ class PlaytimeManager(private val plugin: EasyPlaytime) {
         playtimeData[uuid] = totalPlaytime
 
         if (dataManager.isDatabaseEnabled()) {
-            // Send total playtime to data source, not just session time
-            dataManager.updatePlaytime(uuid, totalPlaytime)
-            plugin.logger.info("Spielzeit für ${player.name} aktualisiert: ${formatTime(totalPlaytime)} (Session: ${formatTime(sessionTime)})")
+            val syncDebug = plugin.configManager.getConfig().getBoolean("database.sync-debug", false)
+            // Send total playtime to data source async, not just session time
+            plugin.server.asyncScheduler.runNow(plugin) { _ ->
+                try {
+                    dataManager.updatePlaytime(uuid, totalPlaytime)
+                    if (syncDebug) {
+                        plugin.logger.info("Spielzeit für ${player.name} aktualisiert: ${formatTime(totalPlaytime)} (Session: ${formatTime(sessionTime)})")
+                    }
+                } catch (e: Exception) {
+                    plugin.logger.severe("Fehler beim Aktualisieren der Spielzeit für ${player.name}: ${e.message}")
+                }
+            }
         } else {
             savePlayerData(uuid) // Fallback to YAML
         }
@@ -60,24 +69,8 @@ class PlaytimeManager(private val plugin: EasyPlaytime) {
     fun getPlaytime(player: Player): Long {
         val uuid = player.uniqueId
 
-        // Always try to get the most current data from data source if enabled
-        if (dataManager.isDatabaseEnabled()) {
-            try {
-                val dataSourcePlaytime = dataManager.getPlaytime(uuid)
-                val localPlaytime = playtimeData.getOrDefault(uuid, 0L)
-
-                // Use the highest playtime available
-                val currentPlaytime = maxOf(dataSourcePlaytime, localPlaytime)
-                playtimeData[uuid] = currentPlaytime
-
-                if (dataSourcePlaytime != localPlaytime) {
-                    plugin.logger.info("Spielzeit für ${player.name} abgeglichen: Datenquelle=${formatTime(dataSourcePlaytime)}, Lokal=${formatTime(localPlaytime)}")
-                }
-            } catch (e: Exception) {
-                plugin.logger.warning("Konnte Spielzeit für ${player.name} nicht aus Datenquelle laden: ${e.message}")
-            }
-        }
-
+        // Verwende nur den Cache - DB-Sync passiert nur beim Join/Quit und periodisch
+        // Das verhindert unnötige DB-Abfragen bei jedem Abruf
         var totalPlaytime = playtimeData.getOrDefault(uuid, 0L)
 
         // Add current session time if player is online
@@ -94,7 +87,6 @@ class PlaytimeManager(private val plugin: EasyPlaytime) {
     }
 
     fun formatTime(timeMs: Long): String {
-        val config = plugin.configManager.getConfig()
         val seconds = timeMs / 1000
 
         val days = seconds / 86400
@@ -104,16 +96,17 @@ class PlaytimeManager(private val plugin: EasyPlaytime) {
 
         val parts = mutableListOf<String>()
 
-        if (config.getBoolean("format.show-days", true) && days > 0) {
+        // Nutze gecachte Config-Werte statt jedes Mal die Config zu lesen (Performance)
+        if (plugin.configManager.isShowDays() && days > 0) {
             parts.add("${days}d")
         }
-        if (config.getBoolean("format.show-hours", true) && hours > 0) {
+        if (plugin.configManager.isShowHours() && hours > 0) {
             parts.add("${hours}h")
         }
-        if (config.getBoolean("format.show-minutes", true) && minutes > 0) {
+        if (plugin.configManager.isShowMinutes() && minutes > 0) {
             parts.add("${minutes}m")
         }
-        if (config.getBoolean("format.show-seconds", true) && secs > 0) {
+        if (plugin.configManager.isShowSeconds() && secs > 0) {
             parts.add("${secs}s")
         }
 
@@ -220,16 +213,21 @@ class PlaytimeManager(private val plugin: EasyPlaytime) {
         }
 
         try {
+            val syncDebug = plugin.configManager.getConfig().getBoolean("database.sync-debug", false)
             val dataSourcePlaytime = dataManager.getPlaytime(uuid)
             val localPlaytime = playtimeData.getOrDefault(uuid, 0L)
 
             if (dataSourcePlaytime > localPlaytime) {
                 playtimeData[uuid] = dataSourcePlaytime
-                plugin.logger.info("Spieler-Daten aus Datenquelle synchronisiert für ${uuid}: ${formatTime(dataSourcePlaytime)} (lokal war: ${formatTime(localPlaytime)})")
+                if (syncDebug) {
+                    plugin.logger.info("Spieler-Daten aus Datenquelle synchronisiert für ${uuid}: ${formatTime(dataSourcePlaytime)} (lokal war: ${formatTime(localPlaytime)})")
+                }
             } else if (dataSourcePlaytime < localPlaytime) {
                 // Local playtime is higher - update data source immediately
                 dataManager.updatePlaytime(uuid, localPlaytime)
-                plugin.logger.info("Datenquelle mit höherer lokaler Spielzeit aktualisiert für ${uuid}: ${formatTime(localPlaytime)}")
+                if (syncDebug) {
+                    plugin.logger.info("Datenquelle mit höherer lokaler Spielzeit aktualisiert für ${uuid}: ${formatTime(localPlaytime)}")
+                }
             }
         } catch (e: Exception) {
             plugin.logger.severe("Fehler beim Synchronisieren des Spielers ${uuid}: ${e.message}")
@@ -243,22 +241,58 @@ class PlaytimeManager(private val plugin: EasyPlaytime) {
         }
 
         try {
-            val dataSourcePlaytimes = dataManager.getAllPlaytimes()
+            val syncDebug = plugin.configManager.getConfig().getBoolean("database.sync-debug", false)
 
-            // Update local cache with data source data - keep the highest playtime
-            for ((uuid, dataSourcePlaytime) in dataSourcePlaytimes) {
-                val localPlaytime = playtimeData.getOrDefault(uuid, 0L)
-                if (dataSourcePlaytime > localPlaytime) {
-                    playtimeData[uuid] = dataSourcePlaytime
-                    plugin.logger.info("Synchronisiert Spielzeit für ${uuid} von Datenquelle: ${formatTime(dataSourcePlaytime)} (lokal war: ${formatTime(localPlaytime)})")
-                } else if (dataSourcePlaytime < localPlaytime) {
-                    // Local playtime is higher - update data source
-                    dataManager.updatePlaytime(uuid, localPlaytime)
-                    plugin.logger.info("Aktualisiere Datenquelle mit höherer lokaler Spielzeit für ${uuid}: ${formatTime(localPlaytime)}")
+            // Get only online players' UUIDs
+            val onlinePlayers = plugin.server.onlinePlayers.map { it.uniqueId }.toSet()
+
+            if (onlinePlayers.isEmpty()) {
+                if (syncDebug) {
+                    plugin.logger.info("Keine Online-Spieler zum Synchronisieren.")
+                }
+                return
+            }
+
+            // Batch-Abfrage für alle Online-Spieler (viel effizienter als einzelne Abfragen)
+            val dataSourcePlaytimes = dataManager.getPlaytimes(onlinePlayers)
+            val updatesToDataSource = mutableMapOf<UUID, Long>()
+            var syncedCount = 0
+
+            // Sync only online players
+            for (uuid in onlinePlayers) {
+                try {
+                    val dataSourcePlaytime = dataSourcePlaytimes[uuid] ?: 0L
+                    val localPlaytime = playtimeData.getOrDefault(uuid, 0L)
+
+                    if (dataSourcePlaytime > localPlaytime) {
+                        playtimeData[uuid] = dataSourcePlaytime
+                        syncedCount++
+                        if (syncDebug) {
+                            plugin.logger.info("Synchronisiert Spielzeit für ${uuid} von Datenquelle: ${formatTime(dataSourcePlaytime)} (lokal war: ${formatTime(localPlaytime)})")
+                        }
+                    } else if (dataSourcePlaytime < localPlaytime) {
+                        // Local playtime is higher - sammle für Batch-Update
+                        updatesToDataSource[uuid] = localPlaytime
+                        syncedCount++
+                        if (syncDebug) {
+                            plugin.logger.info("Aktualisiere Datenquelle mit höherer lokaler Spielzeit für ${uuid}: ${formatTime(localPlaytime)}")
+                        }
+                    }
+                } catch (e: Exception) {
+                    if (syncDebug) {
+                        plugin.logger.warning("Fehler beim Synchronisieren von Spieler ${uuid}: ${e.message}")
+                    }
                 }
             }
 
-            plugin.logger.info("Datenquellen-Synchronisation abgeschlossen. ${dataSourcePlaytimes.size} Spieler synchronisiert.")
+            // Batch-Update für alle höheren lokalen Spielzeiten
+            if (updatesToDataSource.isNotEmpty()) {
+                dataManager.batchUpdatePlaytimes(updatesToDataSource)
+            }
+
+            if (syncDebug) {
+                plugin.logger.info("Datenquellen-Synchronisation abgeschlossen. $syncedCount Spieler synchronisiert.")
+            }
         } catch (e: Exception) {
             plugin.logger.severe("Fehler bei der Datenquellen-Synchronisation: ${e.message}")
         }
