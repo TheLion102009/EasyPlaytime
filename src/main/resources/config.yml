@@ -9,6 +9,9 @@
 # - Nur Online-Spieler werden synchronisiert
 # ============================================
 
+# Config-Version (NICHT ÄNDERN - wird für automatische Updates verwendet)
+config-version: 2
+
 # Zeitformat Einstellungen
 format:
   # Zeige Tage (d) - z.B. "5d"
@@ -19,6 +22,9 @@ format:
 
   # Zeige Minuten (m) - z.B. "25m"
   show-minutes: true
+
+  # Zeige Sekunden (s) - z.B. "30s"
+  show-seconds: true
 
 # Datenbank-Konfiguration für serverübergreifende Spielzeit-Synchronisation
 database:

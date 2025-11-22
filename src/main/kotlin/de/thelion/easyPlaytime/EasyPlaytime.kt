@@ -24,6 +24,9 @@ class EasyPlaytime : JavaPlugin() {
     override fun onEnable() {
         instance = this
         
+        // Check Minecraft version compatibility (1.21.0 - 1.21.10)
+        checkServerCompatibility()
+
         // Initialize managers
         configManager = ConfigManager(this)
         playtimeManager = PlaytimeManager(this)
@@ -56,6 +59,34 @@ class EasyPlaytime : JavaPlugin() {
         // Save all playtime data
         playtimeManager.saveAllData()
         logger.info("EasyPlaytime Plugin wurde deaktiviert!")
+    }
+
+    private fun checkServerCompatibility() {
+        val version = server.minecraftVersion
+        val isFolia = try {
+            Class.forName("io.papermc.paper.threadedregions.RegionizedServer")
+            true
+        } catch (e: ClassNotFoundException) {
+            false
+        }
+
+        val serverType = if (isFolia) "Folia" else "Paper"
+
+        // Check if version is 1.21.x (1.21.0 - 1.21.10)
+        val versionParts = version.split(".")
+        if (versionParts.size >= 2) {
+            val major = versionParts[0].toIntOrNull() ?: 0
+            val minor = versionParts[1].toIntOrNull() ?: 0
+
+            if (major == 1 && minor == 21) {
+                logger.info("✓ Running on $serverType $version - Fully supported!")
+                return
+            }
+        }
+
+        logger.warning("⚠ Running on $serverType $version")
+        logger.warning("⚠ This plugin is designed for Minecraft 1.21.0 - 1.21.10")
+        logger.warning("⚠ Other versions may work but are not officially supported")
     }
 
     private fun startPeriodicSync() {

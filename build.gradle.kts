@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "de.thelion"
-version = "1.0-Beta"
+version = "1.2"
 
 repositories {
     mavenCentral()

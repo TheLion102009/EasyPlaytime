@@ -1,7 +1,11 @@
 # EasyPlaytime
 
-**EasyPlaytime** is a lightweight Minecraft plugin that allows you to display player playtime directly in the **tab list** (via placeholders) or in the **chat** using simple commands.  
-Perfect for servers running **Paper** or **Folia** on Minecraft 1.21.x and newer.
+**EasyPlaytime** is a lightweight, high-performance Minecraft plugin that allows you to display player playtime directly in the **tab list** (via placeholders) or in the **chat** using simple commands.  
+
+## 🎮 Supported Versions
+- **Paper**: 1.21.0 - 1.21.10 ✅
+- **Folia**: 1.21.0 - 1.21.10 ✅ (Full async support)
+- **API Version**: 1.21
 
 ---
 
@@ -87,6 +91,9 @@ The configuration file allows you to define which time units are displayed, cust
 **Example `config.yml`:**
 
 ```yaml
+# Config version (automatically managed - DO NOT CHANGE)
+config-version: 2
+
 # Time format settings
 format:
   show-days: true
@@ -97,6 +104,10 @@ format:
 # Database configuration for cross-server synchronization
 database:
   enabled: false
+  
+  # Show sync debug messages in console (true = show, false = hide)
+  sync-debug: false
+  
   host: "localhost"
   port: 3306
   database: "easyplaytime"

@@ -1,11 +1,15 @@
 name: EasyPlaytime
 version: '${version}'
 main: de.thelion.easyPlaytime.EasyPlaytime
-api-version: '1.20'
+api-version: '1.21'
 folia-supported: true
 authors: [ thelion ]
 description: Ein einfaches Spielzeit-Plugin für Minecraft mit konfigurierbaren Zeitformaten und PlaceholderAPI Integration
 website: https://github.com/TheLion102009/EasyPlaytime
+
+# Unterstützte Minecraft-Versionen
+# Paper: 1.21.0 - 1.21.10
+# Folia: 1.21.0 - 1.21.10
 
 commands:
   easyplaytime:
