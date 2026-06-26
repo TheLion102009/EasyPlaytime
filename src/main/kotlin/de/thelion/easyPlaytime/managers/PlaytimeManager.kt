@@ -94,9 +94,30 @@ class PlaytimeManager(private val plugin: EasyPlaytime) {
         val minutes = (seconds % 3600) / 60
         val secs = seconds % 60
 
+        // Auto-Modus: Zeige immer genau N Einheiten, von groß nach klein
+        if (plugin.configManager.isAutoEnabled()) {
+            val count = plugin.configManager.getAutoCount()
+
+            // Alle möglichen Einheiten, von groß nach klein, nur wenn > 0
+            // (Ausnahme: wenn alles 0 ist, zeigen wir "0s")
+            val allParts = buildList {
+                if (days > 0) add("${days}d")
+                if (hours > 0) add("${hours}h")
+                if (minutes > 0) add("${minutes}m")
+                if (secs > 0) add("${secs}s")
+            }
+
+            return if (allParts.isEmpty()) {
+                "0s"
+            } else {
+                // Nimm die ersten N Einheiten (von groß nach klein)
+                allParts.take(count).joinToString(" ")
+            }
+        }
+
+        // Manueller Modus (auto.enabled: false)
         val parts = mutableListOf<String>()
 
-        // Nutze gecachte Config-Werte statt jedes Mal die Config zu lesen (Performance)
         if (plugin.configManager.isShowDays() && days > 0) {
             parts.add("${days}d")
         }

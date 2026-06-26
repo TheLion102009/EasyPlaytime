@@ -4,9 +4,9 @@ import de.thelion.easyPlaytime.EasyPlaytime
 import org.bukkit.configuration.file.FileConfiguration
 
 class ConfigManager(private val plugin: EasyPlaytime) {
-    
+
     companion object {
-        const val CURRENT_CONFIG_VERSION = 2
+        const val CURRENT_CONFIG_VERSION = 3
     }
 
     // Cache für häufig abgefragte Config-Werte (Performance-Optimierung)
@@ -17,6 +17,10 @@ class ConfigManager(private val plugin: EasyPlaytime) {
     private var showHours: Boolean = true
     private var showMinutes: Boolean = true
     private var showSeconds: Boolean = true
+
+    // Auto-Modus Cache
+    private var autoEnabled: Boolean = true
+    private var autoCount: Int = 3
 
     init {
         plugin.saveDefaultConfig()
@@ -38,21 +42,24 @@ class ConfigManager(private val plugin: EasyPlaytime) {
     private fun updateConfig(oldVersion: Int) {
         val config = plugin.config
 
-        when (oldVersion) {
-            1 -> {
-                // Update von Version 1 zu Version 2
-                if (!config.contains("format.show-seconds")) {
-                    config.set("format.show-seconds", true)
-                    plugin.logger.info("- Hinzugefügt: format.show-seconds")
-                }
-                if (!config.contains("config-version")) {
-                    config.set("config-version", 2)
-                    plugin.logger.info("- Hinzugefügt: config-version")
-                }
+        if (oldVersion <= 1) {
+            if (!config.contains("format.show-seconds")) {
+                config.set("format.show-seconds", true)
+                plugin.logger.info("- Hinzugefügt: format.show-seconds")
             }
         }
 
-        // Setze die aktuelle Config-Version
+        if (oldVersion <= 2) {
+            if (!config.contains("format.auto.enabled")) {
+                config.set("format.auto.enabled", true)
+                plugin.logger.info("- Hinzugefügt: format.auto.enabled")
+            }
+            if (!config.contains("format.auto.count")) {
+                config.set("format.auto.count", 3)
+                plugin.logger.info("- Hinzugefügt: format.auto.count")
+            }
+        }
+
         config.set("config-version", CURRENT_CONFIG_VERSION)
         plugin.saveConfig()
         plugin.logger.info("Config erfolgreich auf Version $CURRENT_CONFIG_VERSION aktualisiert!")
@@ -67,17 +74,19 @@ class ConfigManager(private val plugin: EasyPlaytime) {
         showHours = config.getBoolean("format.show-hours", true)
         showMinutes = config.getBoolean("format.show-minutes", true)
         showSeconds = config.getBoolean("format.show-seconds", true)
+        autoEnabled = config.getBoolean("format.auto.enabled", true)
+        autoCount = config.getInt("format.auto.count", 3).coerceIn(1, 4)
     }
-    
+
     fun getConfig(): FileConfiguration {
         return plugin.config
     }
-    
+
     fun reloadConfig() {
         plugin.reloadConfig()
         cacheConfigValues()
     }
-    
+
     fun saveConfig() {
         plugin.saveConfig()
     }
@@ -90,4 +99,8 @@ class ConfigManager(private val plugin: EasyPlaytime) {
     fun isShowHours(): Boolean = showHours
     fun isShowMinutes(): Boolean = showMinutes
     fun isShowSeconds(): Boolean = showSeconds
+
+    // Auto-Modus
+    fun isAutoEnabled(): Boolean = autoEnabled
+    fun getAutoCount(): Int = autoCount
 }

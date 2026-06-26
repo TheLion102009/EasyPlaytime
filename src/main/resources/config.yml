@@ -10,10 +10,25 @@
 # ============================================
 
 # Config-Version (NICHT ÄNDERN - wird für automatische Updates verwendet)
-config-version: 2
+config-version: 3
 
 # Zeitformat Einstellungen
 format:
+  # ============================================
+  # AUTO-MODUS
+  # Wenn auto.enabled: true, werden immer genau 'auto.count' Zeiteinheiten angezeigt.
+  # Die Einheiten passen sich automatisch an die Spielzeit an:
+  #   Beispiel mit count: 3
+  #     < 1 Stunde:  25m 30s       → Minuten, Sekunden        (weniger als count verfügbar)
+  #     < 1 Tag:     2h 25m 30s    → Stunden, Minuten, Sekunden
+  #     >= 1 Tag:    5d 2h 25m     → Tage, Stunden, Minuten   (Sekunden fliegen raus)
+  # Die manuellen show-* Einstellungen werden im Auto-Modus IGNORIERT.
+  # ============================================
+  auto:
+    enabled: true
+    count: 3
+
+  # Manuelle Einstellungen (nur aktiv wenn auto.enabled: false)
   # Zeige Tage (d) - z.B. "5d"
   show-days: true
 
